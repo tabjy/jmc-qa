@@ -1,13 +1,17 @@
 language: java
 sudo: true
-cache:
-  directories:
-    - $HOME/.m2
-addons:
-  apt:
-    packages:
-        - xvfb
-install:
-  - export DISPLAY=':99.0'
-  - Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-script: scripts/run.sh
+matrix:
+  include:
+    - name: OSX
+      os: osx
+      osx_image: xcode9
+      jdk: oraclejdk8
+      before_install:
+        # - brew update
+        # - brew install gnu-sed
+        # - PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH" # replace BSD sed with GNU sed
+      script:
+        - scripts/run.sh
+before_install:
+  - export DISPLAY=':99'
+  - sudo Xvfb :99 -ac -screen 0 1920x1080x24 &

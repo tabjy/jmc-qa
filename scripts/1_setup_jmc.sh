@@ -1,6 +1,8 @@
 #!/bin/bash
 source $(dirname "$0")/config.sh
 
+pwd;
+
 # if a jmc folder already exists, remove it prior to cloning
 if [ -d $JMC_ROOT ]; then
     rm -r $JMC_ROOT;
@@ -17,10 +19,11 @@ mvn jetty:run -f $JMC_THIRD_PARTY/pom.xml &
 jetty_pid=$!;
 
 # build jmc-core
-mvn clean install --quiet -f $JMC_CORE/pom.xml || { exit 1; };
+mvn clean install -f $JMC_CORE/pom.xml || { exit 1; };
 
 # build jmc
-mvn package --quiet -f $JMC_ROOT/pom.xml || { exit 1; };
+cd $JMC_ROOT;
+mvn verify || { kill $jetty_pid; exit 1; };
 
 # kill the jetty process
 kill $jetty_pid;
