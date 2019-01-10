@@ -1,13 +1,15 @@
 language: java
 sudo: true
-cache:
-  directories:
-    - $HOME/.m2
-addons:
-  apt:
-    packages:
-        - xvfb
-install:
-  - export DISPLAY=':99.0'
-  - Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-script: scripts/run.sh
+matrix:
+  include:
+    - name: Windows
+      os: windows # Windows Server version 1803
+      language: shell # Java not currently supported, so use bash to install Java/hg/maven
+      before_install:
+        - choco install adoptopenjdk8 --version 8.212.2
+        - choco install hg --version 5.0.0
+        - choco install maven --version 3.6.1
+        - export PATH=/c/Program\ Files/AdoptOpenJDK/jdk8u212-b04/bin:/c/Program\ Files/Mercurial:/c/ProgramData/chocolatey/lib/maven/bin:${PATH}
+script:
+  - scripts/run.sh
+

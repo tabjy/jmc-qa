@@ -11,6 +11,7 @@ JMC_THIRD_PARTY=$JMC_ROOT/releng/third-party
 # jemmy
 JEMMY_ROOT=$JMC_QA/jemmy
 JMC_JEMMY_LIB=$JMC_ROOT/application/uitests/org.openjdk.jmc.test.jemmy/lib/
+SUPPLEMENTS=$JMC_QA/supplements
 
 # jemmy jar output directories
 JEMMY_AWTINPUT=$JEMMY_ROOT/core/JemmyAWTInput/target
