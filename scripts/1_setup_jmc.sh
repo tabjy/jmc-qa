@@ -21,7 +21,7 @@ mvn clean install -f $JMC_CORE/pom.xml || { exit 1; };
 
 # build jmc
 cd $JMC_ROOT;
-mvn verify || { kill $jetty_pid; exit 1; };
+mvn verify -Dspotbugs.skip=true || { kill $jetty_pid; exit 1; };
 
 # kill the jetty process
 kill $jetty_pid;
