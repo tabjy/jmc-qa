@@ -1,0 +1,203 @@
+# HG changeset patch
+# User Jie Kang <jkang@redhat.com>
+# Date 1567005492 14400
+#      Wed Aug 28 11:18:12 2019 -0400
+# Node ID 9acddbf44dcfec59f8fc6f5775238673a0960e58
+# Parent  5f29ad9ab539bb9a91397985d5b02092a49e70d4
+imported patch jmc-5473
+
+diff --git a/application/org.openjdk.jmc.flightrecorder.ui/src/main/java/org/openjdk/jmc/flightrecorder/ui/overview/ResultTableUi.java b/application/org.openjdk.jmc.flightrecorder.ui/src/main/java/org/openjdk/jmc/flightrecorder/ui/overview/ResultTableUi.java
+--- a/application/org.openjdk.jmc.flightrecorder.ui/src/main/java/org/openjdk/jmc/flightrecorder/ui/overview/ResultTableUi.java
++++ b/application/org.openjdk.jmc.flightrecorder.ui/src/main/java/org/openjdk/jmc/flightrecorder/ui/overview/ResultTableUi.java
+@@ -47,6 +47,10 @@
+ import org.eclipse.jface.viewers.TableViewer;
+ import org.eclipse.swt.SWT;
+ import org.eclipse.swt.graphics.Image;
++import org.eclipse.swt.layout.GridData;
++import org.eclipse.swt.layout.GridLayout;
++import org.eclipse.swt.widgets.Composite;
++import org.eclipse.swt.widgets.Table;
+ import org.eclipse.ui.forms.widgets.Form;
+ import org.eclipse.ui.forms.widgets.FormToolkit;
+ 
+@@ -60,9 +64,11 @@
+ import org.openjdk.jmc.ui.column.ColumnBuilder;
+ import org.openjdk.jmc.ui.column.ColumnManager;
+ import org.openjdk.jmc.ui.column.ColumnMenusFactory;
++import org.openjdk.jmc.ui.column.ColumnsFilter;
+ import org.openjdk.jmc.ui.column.IColumn;
+ import org.openjdk.jmc.ui.column.TableSettings;
+ import org.openjdk.jmc.ui.handlers.MCContextMenuManager;
++import org.openjdk.jmc.ui.misc.MCLayoutFactory;
+ import org.openjdk.jmc.ui.misc.TypedLabelProvider;
+ 
+ class ResultTableUi {
+@@ -144,19 +150,28 @@
+ 		this.editor = editor;
+ 		this.resultMap = resultMap;
+ 
+-		viewer = new TableViewer(parent.getBody(),
+-				SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER | SWT.FULL_SELECTION);
++		Composite resultTableComposite = toolkit.createComposite(parent.getBody());
++		resultTableComposite.setLayout(MCLayoutFactory.createMarginFreeFormPageLayout());
++		Composite filterComposite = toolkit.createComposite(resultTableComposite);
++		filterComposite.setLayoutData(MCLayoutFactory.createFormPageLayoutData(SWT.DEFAULT, SWT.DEFAULT, true, false));
++
++		Table table = toolkit.createTable(resultTableComposite,
++				SWT.FULL_SELECTION | SWT.MULTI | SWT.VIRTUAL | SWT.H_SCROLL | SWT.V_SCROLL);
++		table.setLayoutData(MCLayoutFactory.createFormPageLayoutData());
++		viewer = new TableViewer(table);
+ 		ColumnViewerToolTipSupport.enableFor(viewer);
+ 
+ 		columnsManager = ColumnManager.build(viewer, createColumns(),
+ 				TableSettings.forState(state.getChild(TABLE_PREF_ROOT)));
+-		MCContextMenuManager mm = MCContextMenuManager.create(viewer.getControl());
+-		ColumnMenusFactory.addDefaultMenus(columnsManager, mm);
++		ColumnMenusFactory.addDefaultMenus(columnsManager, MCContextMenuManager.create(table));
+ 
+ 		viewer.setContentProvider(ArrayContentProvider.getInstance());
+ 		viewer.setInput(resultMap.keySet().toArray());
+ 		listener = navigateListener(editor, resultMap);
+ 		viewer.addDoubleClickListener(listener);
++
++		filterComposite.setLayout(new GridLayout(2, false));
++		ColumnsFilter.addFilterControl(filterComposite, toolkit, columnsManager);
+ 	}
+ 
+ 	private IDoubleClickListener navigateListener(IPageContainer editor, Map<Result, DataPageDescriptor> resultMap) {
+diff --git a/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/JfrRecordingTest.java b/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/JfrRecordingTest.java
+--- a/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/JfrRecordingTest.java
++++ b/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/JfrRecordingTest.java
+@@ -44,6 +44,7 @@
+ import org.openjdk.jmc.test.jemmy.misc.base.wrappers.MCJemmyBase;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.JfrNavigator;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.JfrUi;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.MC;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.MCButton.Labels;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.MCDialog;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.MCMenu;
+@@ -73,11 +74,13 @@
+ 		@Override
+ 		public void before() {
+ 			initialZipFileMemoryFactor = RecordingLoader.getZippedFileMemoryFactor();
++			MC.setRecordingAnalysis(true);
+ 		}
+ 
+ 		@Override
+ 		public void after() {
+ 			RecordingLoader.setZippedFileMemoryFactor(initialZipFileMemoryFactor);
++			MC.setRecordingAnalysis(false);
+ 		}
+ 	};
+ 
+diff --git a/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/OldRecordingsVerificationTest.java b/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/OldRecordingsVerificationTest.java
+--- a/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/OldRecordingsVerificationTest.java
++++ b/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/OldRecordingsVerificationTest.java
+@@ -48,6 +48,7 @@
+ import org.openjdk.jmc.test.jemmy.misc.helpers.EventSettingsData;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.JfrNavigator;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.JfrUi;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.MC;
+ import org.openjdk.jmc.test.jemmy.misc.wrappers.MCMenu;
+ 
+ /**
+@@ -71,10 +72,12 @@
+ 		@Override
+ 		public void before() {
+ 			JfrUi.openJfr(materialize("jfr", fileName, OldRecordingsVerificationTest.class));
++			MC.setRecordingAnalysis(true);
+ 		}
+ 
+ 		@Override
+ 		public void after() {
++			MC.setRecordingAnalysis(false);
+ 			MCMenu.closeActiveEditor();
+ 		}
+ 	};
+diff --git a/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/overview/ResultOverviewTest.java b/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/overview/ResultOverviewTest.java
+new file mode 100644
+--- /dev/null
++++ b/application/uitests/org.openjdk.jmc.flightrecorder.uitest/src/test/java/org/openjdk/jmc/flightrecorder/uitest/overview/ResultOverviewTest.java
+@@ -0,0 +1,61 @@
++package org.openjdk.jmc.flightrecorder.uitest.overview;
++
++import org.junit.Assert;
++import org.junit.Rule;
++import org.junit.Test;
++import org.openjdk.jmc.flightrecorder.ui.messages.internal.Messages;
++import org.openjdk.jmc.test.jemmy.MCJemmyTestBase;
++import org.openjdk.jmc.test.jemmy.MCUITestRule;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.JfrNavigator;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.JfrUi;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.MC;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.MCMenu;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.MCTable;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.MCText;
++import org.openjdk.jmc.test.jemmy.misc.wrappers.MCToolBar;
++
++public class ResultOverviewTest extends MCJemmyTestBase {
++
++	private static final String PLAIN_JFR = "plain_recording.jfr";
++	private static MCTable resultTable;
++	private static MCToolBar tb;
++	private static MCText text;
++
++	@Rule
++	public MCUITestRule testRule = new MCUITestRule(verboseRuleOutput) {
++		@Override
++		public void before() {
++			JfrUi.openJfr(materialize("jfr", PLAIN_JFR, ResultOverviewTest.class));
++			MC.setRecordingAnalysis(true);
++			JfrNavigator.selectTab(JfrUi.Tabs.AUTOMATED_ANALYSIS_RESULTS);
++		}
++
++		@Override
++		public void after() {
++			MC.setRecordingAnalysis(false);
++			MCMenu.closeActiveEditor();
++		}
++	};
++
++	@Test
++	public void searchTableTest() {
++		tb = MCToolBar.getByToolTip(Messages.ResultOverview_DISPLAYMODE_REPORT);
++		tb.clickToolItem(Messages.ResultOverview_DISPLAYMODE_TABLE);
++		text = MCText.getByToolTip(org.openjdk.jmc.ui.Messages.SEARCH_KLEENE_OR_REGEXP_TOOLTIP);
++		resultTable = MCTable.getByColumnHeader(Messages.ResultOverview_COLUMN_PAGE);
++
++		// Verify that the table has elements
++		final int totalEvents = resultTable.getItemCount();
++		Assert.assertTrue(totalEvents > 0);
++
++		// Verify that the search functionality works
++		text.setText(Messages.SystemPage_SECTION_MEMORY);
++		final int numEventsWithText = resultTable.getItemCount();
++		Assert.assertTrue(totalEvents > numEventsWithText);
++
++		// Verify that a the table is empty with a nonsense search text
++		text.setText("ggvgaejltqcxcspninfh");
++		final int numEmptyTable = resultTable.getItemCount();
++		Assert.assertTrue(numEmptyTable == 0);
++	}
++}
+diff --git a/application/uitests/org.openjdk.jmc.test.jemmy/src/test/java/org/openjdk/jmc/test/jemmy/misc/wrappers/JfrUi.java b/application/uitests/org.openjdk.jmc.test.jemmy/src/test/java/org/openjdk/jmc/test/jemmy/misc/wrappers/JfrUi.java
+--- a/application/uitests/org.openjdk.jmc.test.jemmy/src/test/java/org/openjdk/jmc/test/jemmy/misc/wrappers/JfrUi.java
++++ b/application/uitests/org.openjdk.jmc.test.jemmy/src/test/java/org/openjdk/jmc/test/jemmy/misc/wrappers/JfrUi.java
+@@ -55,6 +55,7 @@
+ 	 * Members ======= List of tabs
+ 	 */
+ 	public static enum Tabs {
++		AUTOMATED_ANALYSIS_RESULTS,
+ 		JAVA_APPLICATION,
+ 		THREADS,
+ 		MEMORY,
+@@ -82,6 +83,9 @@
+ 		public static String[] text(Tabs tab) {
+ 			String[] tabText = {""};
+ 			switch (tab) {
++			case AUTOMATED_ANALYSIS_RESULTS:
++				tabText = new String[] {"Automated Analysis Results"};
++				break;
+ 			case JVM_INTERNALS:
+ 				tabText = new String[] {"JVM Internals"};
+ 				break;

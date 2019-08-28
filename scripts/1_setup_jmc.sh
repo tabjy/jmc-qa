@@ -9,6 +9,11 @@ fi
 # clone the jmc repo
 hg clone $JMC_REPO $JMC_ROOT || { exit 1; };
 
+# apply the proposed patch for JMC-5473
+cd $JMC_ROOT;
+hg import ../patches/5473.patch --no-commit
+cd ../;
+
 # setup the p2 repository
 mvn p2:site -f $JMC_THIRD_PARTY/pom.xml || { exit 1; };
 
